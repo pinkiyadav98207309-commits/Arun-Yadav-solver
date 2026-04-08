@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to Summary Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.95em;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: #f8f9ff;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background-color: #f0f2ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background-color: #e8ebff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            color: #333;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+
+        .upload-subtext {
+            color: #999;
+            font-size: 0.9em;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .file-info {
+            background-color: #f0f2ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .file-name {
+            color: #333;
+            font-weight: 600;
+            word-break: break-all;
+        }
+
+        .file-size {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .summary-length {
+            margin: 20px 0;
+        }
+
+        .summary-length label {
+            display: block;
+            margin-bottom: 10px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 8px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #764ba2;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+            transition: background 0.3s ease;
+        }
+
+        input[type="range"]::-moz-range-thumb:hover {
+            background: #764ba2;
+        }
+
+        .length-value {
+            font-weight: 600;
+            color: #667eea;
+            min-width: 40px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-summarize {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-summarize:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-summarize:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-clear {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-clear:hover {
+            background: #e0e0e0;
+        }
+
+        .summary-section {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .summary-section.show {
+            display: block;
+        }
+
+        .summary-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .summary-content {
+            background-color: #f8f9ff;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            line-height: 1.6;
+            color: #333;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-copy, .btn-download {
+            flex: 1;
+            padding: 10px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-copy:hover, .btn-download:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f0f0f0;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .error {
+            background-color: #ffe8e8;
+            border: 1px solid #ff6b6b;
+            color: #c92a2a;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .stats {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .stat-item {
+            flex: 1;
+            background: #f0f2ff;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #999;
+            font-size: 0.85em;
+        }
+
+        .stat-value {
+            color: #667eea;
+            font-weight: 700;
+            font-size: 1.1em;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
+
+            .upload-area {
+                padding: 30px 20px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📄 PDF to Summary</h1>
+        <p class="subtitle">Transform your PDF documents into concise summaries</p>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📤</div>
+            <div class="upload-text">Drag and drop your PDF here</div>
+            <div class="upload-subtext">or click to select a file</div>
+        </div>
+
+        <input type="file" id="fileInput" accept=".pdf" />
+
+        <div class="error" id="errorMessage"></div>
+
+        <div class="file-info" id="fileInfo">
+            <div class="file-name" id="fileName"></div>
+            <div class="file-size" id="fileSize"></div>
+        </div>
+
+        <div class="summary-length">
+            <label for="summaryLength">Summary Length:</label>
+            <div class="slider-container">
+                <input type="range" id="summaryLength" min="20" max="100" value="50" />
+                <span class="length-value"><span id="lengthValue">50</span>%</span>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button class="btn-summarize" id="summarizeBtn" disabled>Summarize</button>
+            <button class="btn-clear" id="clearBtn">Clear</button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div class="loading-text">Processing your PDF...</div>
+        </div>
+
+        <div class="summary-section" id="summarySection">
+            <div class="summary-title">Summary Result</div>
+            <div class="summary-content" id="summaryContent"></div>
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-label">Original Words</div>
+                    <div class="stat-value" id="originalWords">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Summary Words</div>
+                    <div class="stat-value" id="summaryWords">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Compression</div>
+                    <div class="stat-value" id="compressionRatio">0%</div>
+                </div>
+            </div>
+            <div class="action-buttons">
+                <button class="btn-copy" id="copyBtn">📋 Copy</button>
+                <button class="btn-download" id="downloadBtn">⬇️ Download</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const summarizeBtn = document.getElementById('summarizeBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const summaryLength = document.getElementById('summaryLength');
+        const lengthValue = document.getElementById('lengthValue');
+        const loading = document.getElementById('loading');
+        const errorMessage = document.getElementById('errorMessage');
+        const summarySection = document.getElementById('summarySection');
+        const summaryContent = document.getElementById('summaryContent');
+        const copyBtn = document.getElementById('copyBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const originalWords = document.getElementById('originalWords');
+        const summaryWords = document.getElementById('summaryWords');
+        const compressionRatio = document.getElementById('compressionRatio');
+
+        let selectedFile = null;
+
+        // Upload area click
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                handleFileSelect(files[0]);
+            }
+        });
+
+        // Handle file selection
+        function handleFileSelect(file) {
+            if (file.type !== 'application/pdf') {
+                showError('Please select a valid PDF file');
+                return;
+            }
+
+            if (file.size > 50 * 1024 * 1024) {
+                showError('File size must be less than 50MB');
+                return;
+            }
+
+            selectedFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = `Size: ${(file.size / 1024).toFixed(2)} KB`;
+            fileInfo.classList.add('show');
+            summarizeBtn.disabled = false;
+            hideError();
+            summarySection.classList.remove('show');
+        }
+
+        // Clear button
+        clearBtn.addEventListener('click', () => {
+            selectedFile = null;
+            fileInput.value = '';
+            fileInfo.classList.remove('show');
+            summarySection.classList.remove('show');
+            summarizeBtn.disabled = true;
+            hideError();
+        });
+
+        // Summary length slider
+        summaryLength.addEventListener('input', (e) => {
+            lengthValue.textContent = e.target.value;
+        });
+
+        // Summarize button
+        summarizeBtn.addEventListener('click', () => {
+            if (!selectedFile) {
+                showError('Please select a PDF file first');
+                return;
+            }
+
+            summarizePDF();
+        });
+
+        // Summarize PDF
+        async function summarizePDF() {
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('summaryLength', summaryLength.value);
+
+            loading.classList.add('show');
+            hideError();
+
+            try {
+                const response = await fetch('/api/summarize', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to summarize PDF');
+                }
+
+                const data = await response.json();
+                displaySummary(data);
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                loading.classList.remove('show');
+            }
+        }
+
+        // Display summary
+        function displaySummary(data) {
+            summaryContent.textContent = data.summary;
+            originalWords.textContent = data.originalWords;
+            summaryWords.textContent = data.summaryWords;
+            compressionRatio.textContent = data.compressionRatio + '%';
+            summarySection.classList.add('show');
+        }
+
+        // Copy to clipboard
+        copyBtn.addEventListener('click', () => {
+            const text = summaryContent.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = '✅ Copied!';
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                }, 2000);
+            }).catch(() => {
+                showError('Failed to copy to clipboard');
+            });
+        });
+
+        // Download summary
+        downloadBtn.addEventListener('click', () => {
+            const text = summaryContent.textContent;
+            const element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+            element.setAttribute('download', 'summary.txt');
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+        });
+
+        // Error handling
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('show');
+        }
+
+        function hideError() {
+            errorMessage.classList.remove('show');
+        }
+    </script>
+</body>
+</html>
